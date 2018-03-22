@@ -1,0 +1,785 @@
+Script started on Mon 18 Apr 2016 12:09:49 AM EDT
+yren27@matrix:~/oop345/ms2> whoami
+yren27
+yren27@matrix:~/oop345/ms2> cat milestones2.cpp
+#include <string>
+#include <vector>
+#include <fstream>
+#include <iostream>
+#include<sstream>
+#include <memory>
+
+using namespace std;
+
+class Task {
+	
+	
+	string name, slots, passed, failed;
+	
+	public:
+		
+		Task() {
+		}
+		
+		Task(string n, string s, string p, string f):
+			name(n), slots(s), passed(p), failed(f) {}
+			
+		void print(ostream& os ) const
+		{
+		 os << "name=" << name
+		    << "slots" << slots ; 
+		    	
+		    	if (not passed.empty()) os << "passed=" << passed;
+		    	if (not failed.empty()) os << "failed=" << failed;
+		    	
+		    	os << "\n" ;
+		    }
+		    
+		void gengraphviz(ostream& os ) const
+		{
+			if(not passed.empty())
+			  
+			  os << "  " << '"' << name << '"' << "->" << '"' << passed << '"'<< " [color=green];\n";
+			  
+			if(not failed.empty())
+			  
+			  os << "  " << '"' << name << '"' << "->" << '"' << failed << '"'<< " [color=red];\n";
+			  
+			  if(passed.empty() && failed.empty())
+			  {
+			  	os << "  " << '"' << name << '"' << " [shape=box];\n";
+			  }
+			    			  
+			}   
+};                                    
+
+
+//     Task
+	    
+class TaskManager {
+	
+	vector<Task> taskList;
+	
+	public:
+	
+	TaskManager(){}
+	
+	void print(ostream& os){
+	for(auto t:taskList)
+	{
+		t.print(os);
+	}
+}
+	
+	void gengraphviz(string filename){
+	ofstream of(filename.c_str());
+	if (of.is_open())
+	{
+		of<<"digraph task {\n";
+		for (auto t:taskList)
+		{
+			t.gengraphviz(of);
+		}
+		of <<"}\n";
+		of.close();
+
+		string cmd="dot "+filename+" -Tpng > "+filename+".png";
+		cout<<"command '"<<cmd<<" ' returned "<<system(cmd.c_str())<<"\n";
+	}
+}
+	int parseTask(vector<vector<string>>csvData)
+	{
+	auto isName=[](string s)
+	{
+		if (!(isalpha (s[0]) || (s[0]=='_' ))) 
+		return false;
+		
+		for (unsigned i=1;i<s.size(); i++)
+		{
+			if (!(isalnum (s[i]) ||( s[i]==' ') || (s[i]=='-') || (s[i]=='_'))) return false;
+		}
+		return true;
+	};
+	auto isInt=[](string s)
+	{
+		for (size_t i=0;i<s.size();i++)
+		{
+			if (!isdigit (s[i])) return false;
+		}
+		return true;
+	};
+	int errors=0;
+	int lineNumber=0;
+	auto printError=[&errors,&lineNumber](string message, string expected,string found)
+	{
+		errors++;
+		cerr<<"line "<<lineNumber<<" syntax error: "<<message<<" expected "<<expected<<" found -->"<<found<<" <--\n";
+	};
+	for(auto line:csvData)
+	{
+		lineNumber++;
+		string name,slots("1"),passed,failed;
+		
+		switch (line.size()){
+		
+		case 4:
+			if (line[3].size()>0 && isName(line[3]))
+			{
+				failed=line[3];
+			}else {
+				printError("'failed' field name","alpha",line[3]);
+				continue;
+			}
+		case 3:
+			if (line[2].size()>0 && isName(line[2])){
+				passed=line[2];
+			} else{
+				printError("'passed' field name","alpha",line[2]);
+				continue;
+			}
+		case 2:
+			if (line[1].size()>0 && isInt(line[1])){
+				slots=line[1];
+			}else{
+				printError("'slots' count","number",line[1]);
+				continue;
+			}
+		case 1:
+			if (line[0].size()>0 &&isName(line[0])){
+				name=line[0];
+			}else{
+				printError("'name' field","alpha",line[0]);
+				continue;
+			}
+			break;
+			default :
+			printError ("?","1,2,3,or 4 fields",to_string(line.size())+" fields");
+			continue;
+		}
+	
+		taskList.emplace_back(name,slots,passed,failed);
+	}
+	return errors;
+}
+
+		
+	
+	
+};                                          
+
+
+ //   TaskManager
+
+
+class Item
+{
+	string name,installer,remover,sequential,description;
+public:
+	Item() {}
+    
+	Item(string n,string i,string r,string s,string d):name(n),installer(i),remover(r),sequential(s),description(d){}
+
+	void print (ostream& os) const{
+	os<<"item name="<<name<<"  installer task="<<installer<<"  remover task="<<remover<<"  sequential code="<<sequential;
+	if (!description.empty()) os<<"   description="<< description;
+	os<<endl;
+}
+	void gengraphviz(ostream& os ) const
+	{
+	if (!installer.empty())
+		os<<"   "<<'"'<<name<<'"'<<"->"<<'"'<<installer<<'"'<<" [color=green];\n";
+	if (!remover.empty())
+		os<<"   "<<'"'<<name<<'"'<<"->"<<'"'<<remover<<'"'<<" [color=red];\n";
+}
+};
+
+
+// Item
+  
+ class ItemManager
+{
+	vector<Item> ItemList;
+public:
+	ItemManager(){}
+	void print(ostream& os )
+	{
+	for(auto t:ItemList)
+	{
+		t.print(os);
+	}
+}
+	void gengraphviz(string filename ){
+	ofstream of(filename.c_str());
+	if (of.is_open())
+	{
+		of<<"digraph Item {\n";
+		for (auto t:ItemList)
+		{
+			t.gengraphviz(of);
+		}
+		of <<"}\n";
+		of.close();
+
+		string cmd="dot "+filename+" -Tpng > "+filename+".png";
+		cout<<"command '"<<cmd<<" ' returned "<<system(cmd.c_str())<<"\n";
+	}
+}
+	int parseItem(vector<vector<string>>csvData){
+	auto isName=[](string s)
+	{
+		if (!(isalpha (s[0]) || (s[0]=='_' ))) return false;
+		for (unsigned i=1;i<s.size(); i++)
+		{
+			if (!(isalnum (s[i]) ||( s[i]==' ') || (s[i]=='-') || (s[i]=='_'))) return false;
+		}
+		return true;
+	};
+	auto isInt=[](string s)
+	{
+		for (size_t i=0;i<s.size();i++)
+		{
+			if (!isdigit (s[i])) return false;
+		}
+		return true;
+	};
+	int errors=0;
+	int lineNumber=0;
+	auto printError=[&errors,&lineNumber](string message, string expected,string found)
+	{
+		errors++;
+		cerr<<"line "<<lineNumber<<" syntax error: "<<message<<" expected "<<expected<<" found -->"<<found<<" <--\n";
+	};
+	for(auto line:csvData)
+	{
+
+		lineNumber++;
+		string name,installer,remover,sequential,description;
+		switch (line.size()){
+		case 5:
+			if (line[4].size()>0 && isName(line[4]))
+			{
+				description=line[4];
+			}else {
+				printError("'failed' field name","alpha",line[4]);
+				continue;
+			}
+		case 4:
+			if (line[3].size()>0 && isInt(line[3]))
+			{
+				sequential=line[3];
+			}else {
+				printError("'failed' field name","alpha",line[3]);
+				continue;
+			}
+			if (line[2].size()>0 && isName(line[2])){
+				remover=line[2];
+			} else{
+				printError("'passed' field name","alpha",line[2]);
+				continue;
+			}
+			if (line[1].size()>0 && isName(line[1])){
+				installer=line[1];
+			}else{
+				printError("'slots' count","number",line[1]);
+				continue;
+			}
+			if (line[0].size()>0 &&isName(line[0])){
+				name=line[0];
+			}else{
+				printError("'name' field","alpha",line[0]);
+				continue;
+			}
+			break;
+			default :
+			printError ("?","syntax error! ?not 4, or 5 fields",to_string(line.size())+" fields");
+			continue;
+		}
+	
+		ItemList.emplace_back(name,installer,remover,sequential,description);
+	}
+	return errors;
+}
+}; 
+		
+// ItemManager
+
+
+class Custom
+{
+	string custom,product;
+	vector <string> itemList;
+public:
+	Custom(){}
+    Custom(string c,string p,vector<string> v):custom(c),product(p),itemList(v){} 
+
+	void print (ostream& os) const{
+	os<<"custom name="<<custom<<"  product name="<<product<<"  ItemList=";
+	for (size_t i=0;i<itemList.size();i++)
+	{
+		os<<itemList[i]<<"  ";
+	}
+	os<<endl;
+}
+	void gengraphviz(ostream& os) const{
+	for (auto t:itemList)
+	{
+		 os<<"   "<<'"'<<custom<<'"'<<"->"<<'"'<<t<<'"'<<" [color=red];\n";
+	}
+	os<<endl;
+}
+};
+
+
+// Custom
+
+class CustomManager
+{
+	vector<Custom> CustomList;
+public:
+	CustomManager(){}
+	void print(ostream& os){
+	for(auto t:CustomList)
+	{
+		t.print(os);
+	}
+}
+	void gengraphviz(string filename){
+	ofstream of(filename.c_str());
+	if (of.is_open())
+	{
+		of<<"digraph Custom {\n";
+		for (auto t:CustomList)
+		{
+			t.gengraphviz(of);
+		}
+		of <<"}\n";
+		of.close();
+
+		string cmd="dot "+filename+" -Tpng > "+filename+".png";
+		cout<<"command '"<<cmd<<" ' returned "<<system(cmd.c_str())<<"\n";
+	}
+}
+	int parseCustom(vector<vector<string>>csvData){
+	auto isName=[](string s)
+	{
+		if (!(isalpha (s[0]) || (s[0]=='_' ))) return false;
+		for (unsigned i=1;i<s.size(); i++)
+		{
+			if (!(isalnum (s[i]) ||( s[i]==' ') || (s[i]=='-') || (s[i]=='_'))) return false;
+		}
+		return true;
+	};
+
+	int errors=0;
+	int lineNumber=0;
+	auto printError=[&errors,&lineNumber](string message, string expected,string found)
+	{
+		errors++;
+		cerr<<"line "<<lineNumber<<" syntax error: "<<message<<" expected "<<expected<<" found -->"<<found<<" <--\n";
+	};
+	for(auto line:csvData)
+	{
+		lineNumber++;
+		cout <<"this is line: "<<lineNumber<<"\n";
+		string custom,product;
+		vector <string> itemList;
+		if (line.size()>=3)
+		{
+			if (line[0].size()>0 &&isName(line[0])){
+				custom=line[0];
+			}else{
+				printError("'custom name' field","alpha",line[0]);
+				continue;
+			}
+			if (line[1].size()>0 && isName(line[1])){
+				product=line[1];
+			}else{
+				printError("'product name' field ","alpha",line[1]);
+				continue;
+			}
+
+			for (size_t i=2;i<line.size();i++)
+			{
+				if (line[i].size()>0 && isName(line[i]))
+				{
+					itemList.push_back(line[i]); 
+				}else{
+					printError("'Item name' field ","alpha",line[i]);
+				}
+			}
+
+		}else{
+			printError ("?","syntax error ?need at least 3 fields",to_string(line.size())+" fields");
+			continue;
+		}
+		
+	
+		CustomList.emplace_back(custom,product, itemList);
+	}
+	return errors;
+}
+};
+
+
+//    CustomManager
+
+
+// main 
+
+
+string trim(string& s)
+{
+	while (!s.empty()&& isspace(s[0])) s.erase(0,1);
+	while (!s.empty()&& isspace(s[s.size()-1])) s.erase(s.size()-1,1);
+	return s;
+}
+
+void csvRead(string filename, char delimiter,vector< vector< string > >& data)
+{
+	ifstream is(filename.c_str());
+
+	if (is.is_open())
+	{
+		string line;
+		while(getline(is,line))
+		{
+			auto cr=line.find('\r');
+			if (cr!=std::string::npos)
+			{
+				line.erase(cr,1);
+			}
+			cout<<line<<"\n";
+			if (!line.empty()){
+			stringstream ss(line);
+
+			vector<string> fields;
+			string field;
+			bool flag=0;
+			while (getline(ss,field,delimiter))
+			{
+				
+				trim(field);
+				if (!field.empty()){
+				fields.push_back(field);
+				flag=1;
+				}
+			}
+			if (flag==1){
+			data.push_back(fields);
+			}
+			}
+		}
+	}else{
+		throw string("cannot open csv file")+filename;
+	}
+}
+int main(int argc,char**argv)
+{
+	char delimiter=',';
+	string fileIn="input.csv";
+
+	if(argc>1) fileIn=argv[1];
+	if(argc>2)delimiter=argv[2][0];
+	try {
+		cout<<"\n++++++++++++++++++++++++++\n";
+		cout<<"# file:"<<fileIn<<"  delimiter -->"<<delimiter<<"<--\n";
+		vector<vector<string>>csvData;
+		csvRead(fileIn,delimiter,csvData);
+
+
+		int lineCount=1;
+		for(auto line:csvData)
+		{
+			cout <<"# "<<lineCount<<": fields="<<line.size()<<" --> ";
+			for (auto field:line)
+			{
+				cout<<" <"<<field<<">";
+			}
+			cout <<"\n";
+			lineCount++;
+		}
+		cout<<"++++++++++++++++++++++++++++++++++++++++\n";
+		if (fileIn.find("Task")!=fileIn.npos)
+		{
+			TaskManager tm;
+			int errors=tm.parseTask(csvData);
+			if (errors)
+				cout <<"'"<<fileIn<<"' contains "<<errors<<" syntax errors\n";
+			tm.print(cout);
+			tm.gengraphviz(fileIn+".gv");
+		}
+		if (fileIn.find("Item")!=fileIn.npos)
+		{
+			ItemManager im;
+			int errors=im.parseItem(csvData);
+			if (errors)
+				cout <<"'"<<fileIn<<"' contains "<<errors<<" syntax errors\n";
+			im.print(cout);
+			im.gengraphviz(fileIn+".gv");
+		}
+		if (fileIn.find("Custom")!=fileIn.npos)
+		{
+			CustomManager cm;
+			int errors=cm.parseCustom(csvData);
+			if (errors)
+				cout <<"'"<<fileIn<<"' contains "<<errors<<" syntax errors\n";
+			cm.print(cout);
+			cm.gengraphviz(fileIn+".gv");
+		}
+
+		cout <<"+++++++++++++++++++++++++++++++++++++++++\n";
+	}catch(exception& e)
+	{
+		cerr<<"It threw a std exception: "<<e.what()<<"\n";
+	}catch(string& e){
+		cerr<<"It threw: "<<e<<"\n";
+	}
+	return 0;
+}
+
+
+
+
+		
+		
+
+yren27@matrix:~/oop345/ms2> g++ -std=c++0x -o ms2 milestones2.cpp
+yren27@matrix:~/oop345/ms2> ms2 TaskList.dat
+
+++++++++++++++++++++++++++
+# file:TaskList.dat  delimiter -->,<--
+Power Supply | 4 | Motherboard
+Motherboard | 3 | CPU | Remove CPU
+Remove CPU | 1 | CPU 
+CPU | 5 | Memory | Remove CPU
+Remove CPU | 1 | CPU
+Memory | 4 | SSD | Remove Memory
+Remove Memory | 1 | Memory
+SSD | 4 | GPU | Remove SSD
+Remove SSD | 1 | SSD
+GPU | 3 | Test
+
+ |
+
+Test | 4 | Approve | Repair
+Repair
+Approve
+         
+            
+
+
+
+  
+  
+# 1: fields=1 -->  <Power Supply | 4 | Motherboard>
+# 2: fields=1 -->  <Motherboard | 3 | CPU | Remove CPU>
+# 3: fields=1 -->  <Remove CPU | 1 | CPU>
+# 4: fields=1 -->  <CPU | 5 | Memory | Remove CPU>
+# 5: fields=1 -->  <Remove CPU | 1 | CPU>
+# 6: fields=1 -->  <Memory | 4 | SSD | Remove Memory>
+# 7: fields=1 -->  <Remove Memory | 1 | Memory>
+# 8: fields=1 -->  <SSD | 4 | GPU | Remove SSD>
+# 9: fields=1 -->  <Remove SSD | 1 | SSD>
+# 10: fields=1 -->  <GPU | 3 | Test>
+# 11: fields=1 -->  <|>
+# 12: fields=1 -->  <Test | 4 | Approve | Repair>
+# 13: fields=1 -->  <Repair>
+# 14: fields=1 -->  <Approve>
+++++++++++++++++++++++++++++++++++++++++
+line 1 syntax error: 'name' field expected alpha found -->Power Supply | 4 | Motherboard <--
+line 2 syntax error: 'name' field expected alpha found -->Motherboard | 3 | CPU | Remove CPU <--
+line 3 syntax error: 'name' field expected alpha found -->Remove CPU | 1 | CPU <--
+line 4 syntax error: 'name' field expected alpha found -->CPU | 5 | Memory | Remove CPU <--
+line 5 syntax error: 'name' field expected alpha found -->Remove CPU | 1 | CPU <--
+line 6 syntax error: 'name' field expected alpha found -->Memory | 4 | SSD | Remove Memory <--
+line 7 syntax error: 'name' field expected alpha found -->Remove Memory | 1 | Memory <--
+line 8 syntax error: 'name' field expected alpha found -->SSD | 4 | GPU | Remove SSD <--
+line 9 syntax error: 'name' field expected alpha found -->Remove SSD | 1 | SSD <--
+line 10 syntax error: 'name' field expected alpha found -->GPU | 3 | Test <--
+line 11 syntax error: 'name' field expected alpha found -->| <--
+line 12 syntax error: 'name' field expected alpha found -->Test | 4 | Approve | Repair <--
+'TaskList.dat' contains 12 syntax errors
+name=Repairslots1
+name=Approveslots1
+command 'dot TaskList.dat.gv -Tpng > TaskList.dat.gv.png ' returned 0
++++++++++++++++++++++++++++++++++++++++++
+yren27@matrix:~/oop345/ms2> ms2 ItemList.dat
+
+++++++++++++++++++++++++++
+# file:ItemList.dat  delimiter -->,<--
+CPU | CPU |Remove CPU | 300 | Central Processing Unit
+Memory | Memory | Remove Memory | 400 | Samsung Memory Stick
+GPU | GPU | Remove GPU | 500 | Nvidia Geforce 750M
+Power Supply | Power Supply | Remove Power Supply | 100 | 
+# 1: fields=1 -->  <CPU | CPU |Remove CPU | 300 | Central Processing Unit>
+# 2: fields=1 -->  <Memory | Memory | Remove Memory | 400 | Samsung Memory Stick>
+# 3: fields=1 -->  <GPU | GPU | Remove GPU | 500 | Nvidia Geforce 750M>
+# 4: fields=1 -->  <Power Supply | Power Supply | Remove Power Supply | 100 |>
+++++++++++++++++++++++++++++++++++++++++
+line 1 syntax error: ? expected syntax error! ?not 4, or 5 fields found -->1 fields <--
+line 2 syntax error: ? expected syntax error! ?not 4, or 5 fields found -->1 fields <--
+line 3 syntax error: ? expected syntax error! ?not 4, or 5 fields found -->1 fields <--
+line 4 syntax error: ? expected syntax error! ?not 4, or 5 fields found -->1 fields <--
+'ItemList.dat' contains 4 syntax errors
+command 'dot ItemList.dat.gv -Tpng > ItemList.dat.gv.png ' returned 0
++++++++++++++++++++++++++++++++++++++++++
+yren27@matrix:~/oop345/ms2> ms2 CustomerOrders.dat
+
+++++++++++++++++++++++++++
+# file:CustomerOrders.dat  delimiter -->,<--
+Fardad Soleimanloo | Dell Precision 3600 | CPU | Memory | Memory | 
+Joseph Hughes | HP Z230 | CPU | Memory
+Chris Szalwinski | HP Z350 | CPU | Memory | SSD | GPU
+
+Elliott Coleshill | HP Apollo 1000 | CPU | MEMORY | Power Supply | GPU
+
+         |
+
+
+		 
+# 1: fields=1 -->  <Fardad Soleimanloo | Dell Precision 3600 | CPU | Memory | Memory |>
+# 2: fields=1 -->  <Joseph Hughes | HP Z230 | CPU | Memory>
+# 3: fields=1 -->  <Chris Szalwinski | HP Z350 | CPU | Memory | SSD | GPU>
+# 4: fields=1 -->  <Elliott Coleshill | HP Apollo 1000 | CPU | MEMORY | Power Supply | GPU>
+# 5: fields=1 -->  <|>
+++++++++++++++++++++++++++++++++++++++++
+this is line: 1
+line 1 syntax error: ? expected syntax error ?need at least 3 fields found -->1 fields <--
+this is line: 2
+line 2 syntax error: ? expected syntax error ?need at least 3 fields found -->1 fields <--
+this is line: 3
+line 3 syntax error: ? expected syntax error ?need at least 3 fields found -->1 fields <--
+this is line: 4
+line 4 syntax error: ? expected syntax error ?need at least 3 fields found -->1 fields <--
+this is line: 5
+line 5 syntax error: ? expected syntax error ?need at least 3 fields found -->1 fields <--
+'CustomerOrders.dat' contains 5 syntax errors
+command 'dot CustomerOrders.dat.gv -Tpng > CustomerOrders.dat.gv.png ' returned 0
++++++++++++++++++++++++++++++++++++++++++
+yren27@matrix:~/oop345/ms2> ms2 FishTankTasks.dat
+
+++++++++++++++++++++++++++
+# file:FishTankTasks.dat  delimiter -->,<--
+SetupTank, 2, AddGravel
+RemoveTank, 1, SetupTank
+AddGravel, 5, AssembleFilter, RemoveGravel
+RemoveGravel, 1, AddGravel
+AssembleFilter, 5, InstallLighting, DisassembleFilter
+DisassembleFilter, 1, AssembleFilter
+InstallLighting, 2, AddHeater, ReplaceLighting
+ReplaceLighting, 1, InstallLighting
+AddHeater, 5, AddWater, RemoveHeater
+RemoveHeater, 1, AddHeater
+AddWater, 5, AddRocks, DrainWater
+DrainWater, 1, AddWater
+AddRocks, 8, AddFish, RemoveRocks
+RemoveRocks, 1, AddRocks, AddFish
+AddFish, 10, AddCoral, CatchFish
+CatchFish, 1, AddFish, AddCoral
+AddCoral, 5, AddToys, RemoveCoral
+RemoveCoral, 1, AddCoral, AddToys
+AddToys, 4
+RemoveToys, 1
+# 1: fields=3 -->  <SetupTank> <2> <AddGravel>
+# 2: fields=3 -->  <RemoveTank> <1> <SetupTank>
+# 3: fields=4 -->  <AddGravel> <5> <AssembleFilter> <RemoveGravel>
+# 4: fields=3 -->  <RemoveGravel> <1> <AddGravel>
+# 5: fields=4 -->  <AssembleFilter> <5> <InstallLighting> <DisassembleFilter>
+# 6: fields=3 -->  <DisassembleFilter> <1> <AssembleFilter>
+# 7: fields=4 -->  <InstallLighting> <2> <AddHeater> <ReplaceLighting>
+# 8: fields=3 -->  <ReplaceLighting> <1> <InstallLighting>
+# 9: fields=4 -->  <AddHeater> <5> <AddWater> <RemoveHeater>
+# 10: fields=3 -->  <RemoveHeater> <1> <AddHeater>
+# 11: fields=4 -->  <AddWater> <5> <AddRocks> <DrainWater>
+# 12: fields=3 -->  <DrainWater> <1> <AddWater>
+# 13: fields=4 -->  <AddRocks> <8> <AddFish> <RemoveRocks>
+# 14: fields=4 -->  <RemoveRocks> <1> <AddRocks> <AddFish>
+# 15: fields=4 -->  <AddFish> <10> <AddCoral> <CatchFish>
+# 16: fields=4 -->  <CatchFish> <1> <AddFish> <AddCoral>
+# 17: fields=4 -->  <AddCoral> <5> <AddToys> <RemoveCoral>
+# 18: fields=4 -->  <RemoveCoral> <1> <AddCoral> <AddToys>
+# 19: fields=2 -->  <AddToys> <4>
+# 20: fields=2 -->  <RemoveToys> <1>
+++++++++++++++++++++++++++++++++++++++++
+name=SetupTankslots2passed=AddGravel
+name=RemoveTankslots1passed=SetupTank
+name=AddGravelslots5passed=AssembleFilterfailed=RemoveGravel
+name=RemoveGravelslots1passed=AddGravel
+name=AssembleFilterslots5passed=InstallLightingfailed=DisassembleFilter
+name=DisassembleFilterslots1passed=AssembleFilter
+name=InstallLightingslots2passed=AddHeaterfailed=ReplaceLighting
+name=ReplaceLightingslots1passed=InstallLighting
+name=AddHeaterslots5passed=AddWaterfailed=RemoveHeater
+name=RemoveHeaterslots1passed=AddHeater
+name=AddWaterslots5passed=AddRocksfailed=DrainWater
+name=DrainWaterslots1passed=AddWater
+name=AddRocksslots8passed=AddFishfailed=RemoveRocks
+name=RemoveRocksslots1passed=AddRocksfailed=AddFish
+name=AddFishslots10passed=AddCoralfailed=CatchFish
+name=CatchFishslots1passed=AddFishfailed=AddCoral
+name=AddCoralslots5passed=AddToysfailed=RemoveCoral
+name=RemoveCoralslots1passed=AddCoralfailed=AddToys
+name=AddToysslots4
+name=RemoveToysslots1
+command 'dot FishTankTasks.dat.gv -Tpng > FishTankTasks.dat.gv.png ' returned 0
++++++++++++++++++++++++++++++++++++++++++
+yren27@matrix:~/oop345/ms2> ms2 FishTankItems.dat
+
+++++++++++++++++++++++++++
+# file:FishTankItems.dat  delimiter -->,<--
+Tank, SetupTank, RemoveTank, 100, Glass Tank to use
+Gravel, AddGravel, RemoveGravel, 200, Gravel for the bottom of the tank
+Filter, AssembleFilter, DisassembleFilter, 300, Cleaning filtration system
+Lighting, InstallLighting, ReplaceLighting, 400, Hood lighting system
+Heater, AddHeater, RemoveHeater, 500, Heater for maintaining water temperature
+Water, AddWater, DrainWater, 600, Clean water for the tank
+Rocks, AddRocks, RemoveRocks, 700, Live Reef Rocks
+Fish, AddFish, CatchFish, 800, Live fish to enjoy
+Coral, AddCoral, RemoveCoral, 900, Live coral to enjoy
+Toys, AddToys, RemoveToys, 1000, Artificial rocks and tank nicknacks
+# 1: fields=5 -->  <Tank> <SetupTank> <RemoveTank> <100> <Glass Tank to use>
+# 2: fields=5 -->  <Gravel> <AddGravel> <RemoveGravel> <200> <Gravel for the bottom of the tank>
+# 3: fields=5 -->  <Filter> <AssembleFilter> <DisassembleFilter> <300> <Cleaning filtration system>
+# 4: fields=5 -->  <Lighting> <InstallLighting> <ReplaceLighting> <400> <Hood lighting system>
+# 5: fields=5 -->  <Heater> <AddHeater> <RemoveHeater> <500> <Heater for maintaining water temperature>
+# 6: fields=5 -->  <Water> <AddWater> <DrainWater> <600> <Clean water for the tank>
+# 7: fields=5 -->  <Rocks> <AddRocks> <RemoveRocks> <700> <Live Reef Rocks>
+# 8: fields=5 -->  <Fish> <AddFish> <CatchFish> <800> <Live fish to enjoy>
+# 9: fields=5 -->  <Coral> <AddCoral> <RemoveCoral> <900> <Live coral to enjoy>
+# 10: fields=5 -->  <Toys> <AddToys> <RemoveToys> <1000> <Artificial rocks and tank nicknacks>
+++++++++++++++++++++++++++++++++++++++++
+item name=Tank  installer task=SetupTank  remover task=RemoveTank  sequential code=100   description=Glass Tank to use
+item name=Gravel  installer task=AddGravel  remover task=RemoveGravel  sequential code=200   description=Gravel for the bottom of the tank
+item name=Filter  installer task=AssembleFilter  remover task=DisassembleFilter  sequential code=300   description=Cleaning filtration system
+item name=Lighting  installer task=InstallLighting  remover task=ReplaceLighting  sequential code=400   description=Hood lighting system
+item name=Heater  installer task=AddHeater  remover task=RemoveHeater  sequential code=500   description=Heater for maintaining water temperature
+item name=Water  installer task=AddWater  remover task=DrainWater  sequential code=600   description=Clean water for the tank
+item name=Rocks  installer task=AddRocks  remover task=RemoveRocks  sequential code=700   description=Live Reef Rocks
+item name=Fish  installer task=AddFish  remover task=CatchFish  sequential code=800   description=Live fish to enjoy
+item name=Coral  installer task=AddCoral  remover task=RemoveCoral  sequential code=900   description=Live coral to enjoy
+item name=Toys  installer task=AddToys  remover task=RemoveToys  sequential code=1000   description=Artificial rocks and tank nicknacks
+command 'dot FishTankItems.dat.gv -Tpng > FishTankItems.dat.gv.png ' returned 0
++++++++++++++++++++++++++++++++++++++++++
+yren27@matrix:~/oop345/ms2> ms2 FishTankCustomerOrders.dat
+
+++++++++++++++++++++++++++
+# file:FishTankCustomerOrders.dat  delimiter -->,<--
+Chloe Coleshill, Gold Fish Tank, Tank, Gravel, Water, Fish
+Elliott Coleshill, Tropical Tank, Tank, Gravel, Water, Heater, Fish, Toys
+Elliott Coleshill, Marine Tank, Tank, Gravel, Water, Lighting, Heater, Rocks, Fish, Coral
+# 1: fields=6 -->  <Chloe Coleshill> <Gold Fish Tank> <Tank> <Gravel> <Water> <Fish>
+# 2: fields=8 -->  <Elliott Coleshill> <Tropical Tank> <Tank> <Gravel> <Water> <Heater> <Fish> <Toys>
+# 3: fields=10 -->  <Elliott Coleshill> <Marine Tank> <Tank> <Gravel> <Water> <Lighting> <Heater> <Rocks> <Fish> <Coral>
+++++++++++++++++++++++++++++++++++++++++
+this is line: 1
+this is line: 2
+this is line: 3
+custom name=Chloe Coleshill  product name=Gold Fish Tank  ItemList=Tank  Gravel  Water  Fish  
+custom name=Elliott Coleshill  product name=Tropical Tank  ItemList=Tank  Gravel  Water  Heater  Fish  Toys  
+custom name=Elliott Coleshill  product name=Marine Tank  ItemList=Tank  Gravel  Water  Lighting  Heater  Rocks  Fish  Coral  
+command 'dot FishTankCustomerOrders.dat.gv -Tpng > FishTankCustomerOrders.dat.gv.png ' returned 0
++++++++++++++++++++++++++++++++++++++++++
+yren27@matrix:~/oop345/ms2> exit
+exit
+
+Script done on Mon 18 Apr 2016 12:12:51 AM EDT

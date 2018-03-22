@@ -1,0 +1,219 @@
+Script started on Mon 01 Feb 2016 11:03:04 PM EST
+yren27@matrix:~/oop345/w2> whoami
+yren27
+yren27@matrix:~/oop345/w2> cat Stations.h
+#include<iostream>
+#include<fstream>
+#include<string>
+#include<iomanip> 
+
+namespace w2{
+
+	enum PassType{ PASS_STUDENT, PASS_ADULT, PASS_COUNT };
+
+class Station{
+		std::string name;
+		unsigned passCounts[PASS_COUNT];
+
+	public:
+		Station(){};
+
+		Station(std::fstream& is)
+		{
+			getline(is, name, ';');
+			is >> passCounts[PASS_STUDENT];
+			is >> passCounts[PASS_ADULT];
+			std::string s;
+			getline(is, s);
+
+		}
+		void report()
+		{
+			std::cout << name << " " << passCounts[PASS_STUDENT] << passCounts[PASS_ADULT] << "\n";
+
+		}
+
+		const std::string& getName() const
+		{
+			return name;
+		}
+
+		void set(const std::string& n, unsigned s, unsigned a)
+		{
+			name = n;
+			passCounts[PASS_STUDENT] = s;
+			passCounts[PASS_ADULT] = a;
+		}
+
+		void update(PassType pt, int num)
+		{
+			passCounts[pt] += num;
+		}
+
+		unsigned inStock(PassType pt)const
+		{
+			return passCounts[pt];
+
+		}
+   };
+		
+class Stations {
+	int count;
+	Station* stations;
+	std::string fileName;
+public:
+	~Stations()
+	{
+
+		delete[] stations;
+	}
+
+	Stations(const char* dataFile)
+	{
+		fileName = dataFile;
+		std::fstream is(dataFile, std::ios::in);
+		if (!is){
+			std::cout << "cannot open file" << dataFile << "/n";
+			return;
+		}
+
+		is >> count;
+
+		char c;
+		is >> c;
+		if (c == ';'){
+			std::string s;
+			getline(is, s);
+
+			stations = new Station[count];
+			for (int i = 0; i < count; i++)
+			{
+				stations[i] = Station(is);
+			}
+		}
+		else {
+			std::cout << "not our data file, expected a semcoion ';', but foind -->" << c << "<--\n";
+		}
+		is.close();
+
+	}
+
+
+	void update()
+	{
+		std::cout << "Passes Sold :"<<"\n"
+		          << "-------------"<<"\n";
+		for (int i = 0; i < count; i++)
+		{
+			std::cout << stations[i].getName() << "\n";
+			int s, a;
+
+			std::cout << " Studnet pass sales: ";
+			std::cin >> s;
+
+			std::cout << " Adult   pass sales: ";
+			std::cin >> a;
+
+
+
+			unsigned numA = stations[i].inStock(PASS_ADULT);
+			if (a < numA)
+			{
+				
+				stations[i].update(PASS_ADULT, -a);
+			}
+			unsigned numS = stations[i].inStock(PASS_STUDENT);
+			if (s < numS)
+			{
+				
+				stations[i].update(PASS_STUDENT, -s);
+			}
+		}
+	}
+
+	void restock()
+	{
+		std::cout << "Passes Added :"<<"\n"
+		          << "--------------"<<"\n";
+		          
+		for (int i = 0; i < count; i++)
+		{
+			std::cout << stations[i].getName() << "\n";
+			int s, a;
+
+			std::cout << " Studnet pass sales: ";
+			std::cin >> s;
+
+			std::cout << " Adult   pass sales: ";
+			std::cin >> a;
+
+
+
+			unsigned numA = stations[i].inStock(PASS_ADULT);
+				
+				stations[i].update(PASS_ADULT, +a);
+			
+			unsigned numS = stations[i].inStock(PASS_STUDENT);
+			
+			    stations[i].update(PASS_STUDENT, +s);
+		}
+		          
+	
+	}
+
+	void report()
+	{
+		std::cout << "\n"<<"Passes in Stock : Student Adult"<<"\n"
+		                << "-------------------------------"<<"\n";
+		for (int i = 0; i < count; i++)
+		{
+			std::cout <<std::left<<std::setw(22)<<std::setfill(' ')<<stations[i].getName()
+				<< stations[i].inStock(PASS_STUDENT) <<"   "
+				<< stations[i].inStock(PASS_ADULT) << "\n";
+		}
+	}
+ };
+}
+yren27@matrix:~/oop345/w2> g++ -o w2 w2.cpp
+yren27@matrix:~/oop345/w2> w2 Stations.dat
+
+Command Line : w2 Stations.dat 
+Passes Sold :
+-------------
+Spadina
+ Studnet pass sales: 5
+ Adult   pass sales: 8
+Bathurst
+ Studnet pass sales: 34
+ Adult   pass sales: 52
+Keele
+ Studnet pass sales: 21
+ Adult   pass sales: 13
+Bay
+ Studnet pass sales: 67
+ Adult   pass sales: 65
+Passes Added :
+--------------
+Spadina
+ Studnet pass sales: 29
+ Adult   pass sales: 52
+Bathurst
+ Studnet pass sales: 113
+ Adult   pass sales: 61
+Keele
+ Studnet pass sales: 51
+ Adult   pass sales: 52
+Bay
+ Studnet pass sales: 109
+ Adult   pass sales: 107
+
+Passes in Stock : Student Adult
+-------------------------------
+Spadina               100   200
+Bathurst              200   300
+Keele                 100   100
+Bay                   200   200
+yren27@matrix:~/oop345/w2> exit
+exit
+
+Script done on Mon 01 Feb 2016 11:04:23 PM EST

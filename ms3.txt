@@ -1,0 +1,1224 @@
+Script started on Mon 25 Apr 2016 12:14:45 AM EDT
+yren27@matrix:~/oop345/ms3> whoami
+yren27
+yren27@matrix:~/oop345/ms3> cat *.h *.cpp
+#pragma once
+
+#include <string>
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <string>
+
+using namespace std;
+class Item
+{
+	string name,installer,remover,sequential,description;
+public:
+	Item();
+	Item(string ,string ,string ,string,string="" );
+
+	string getRemover();
+	string getInstaller();
+	string getName();
+
+	void print (ostream& ) const;
+	void gengraphviz(ostream& ) const;
+};
+class ItemManager:public vector<Item> 
+{
+public:
+	ItemManager();
+	void print(ostream& );
+	Item* Find(string& );
+	void gengraphviz(string );
+	int parseItem(vector<vector<string>>);
+};
+#pragma once
+
+#include "Order.h"
+
+using namespace std;
+
+class Job:public Order
+{
+	vector<bool> installed;
+public:
+	Job(){};
+	Job(Order& oo);
+	bool isComplete();
+	void Install (int i){installed[i]=true;}
+	void Remover(int i){installed[i]=false;}
+	bool isInstalled(int i){return installed[i];}
+};
+
+#pragma once
+#include <queue>
+#include "Job.h"
+#include "Task.h"
+#include "Item.h"
+
+using namespace std;
+
+class Machine:public Task
+{
+	bool bInstaller;
+	bool bRemover;
+	bool bSink;
+	queue<Job> inputQ;
+	string name;
+	Job job;
+public:
+	Machine(Task & tt , ItemManager & im );
+	void push(Job&& );
+	bool empty() {return inputQ.empty();}
+
+	void print(ostream& os );
+	void Classify(ItemManager& in);
+	void Run(ItemManager& im ,vector<Machine>& machinelist);
+};
+#pragma once
+
+#include <string>
+#include <iostream>
+#include <vector>
+#include <fstream>
+
+using namespace std;
+class Order
+{
+	string order,product;
+	vector <string> itemList;
+public:
+	Order();
+	Order(string ,string ,vector<string>);
+	string getCustomerName();
+	string getProductName();
+	vector<string> getItemsOrdered();
+	void print (ostream& ) const;
+	void gengraphviz(ostream& ) const;
+};
+using namespace std;
+class OrderManager:public vector<Order>
+{
+public:
+
+	OrderManager();
+	void print(ostream& );
+	void gengraphviz(string );
+	int parseOrder(vector<vector<string>>);
+};#pragma once
+#include <string>
+#include <iostream>
+#include <vector>
+#include <fstream>
+
+using namespace std;
+class Task
+{
+	string name,slots,passed,failed;
+	bool bSink;
+	int inboundCount;
+public:
+	Task();
+	Task(string ,string ,string ,string );
+
+	string& getName();
+	string& getPassed();
+	string& getFailed();
+	bool isSink() const;
+	void incInboundCount();
+	int getInboundCount();
+	bool isSource() const;
+	
+	void print (ostream& ) const;
+	void gengraphviz(ostream& ) const;
+};
+
+
+class TaskManager   
+{
+	vector<Task> taskList;
+public:
+
+	TaskManager();
+	Task* Find(string& );
+	int IntegrityCheck_tm();
+
+	void print(ostream& );
+	void gengraphviz(string );
+	int parseTask(vector<vector<string>>);
+	size_t size(){return taskList.size();}
+	Task& at(size_t i){return taskList.at(i);}
+
+};
+#pragma once
+
+#include <vector>
+#include <fstream>
+#include <sstream>
+
+
+
+string trim(string& s)
+{
+	while (!s.empty()&& isspace(s[0])) s.erase(0,1);
+	while (!s.empty()&& isspace(s[s.size()-1])) s.erase(s.size()-1,1);
+	return s;
+};
+
+void csvRead(string filename, char delimiter,vector< vector< string > >& data)
+{
+	ifstream is(filename.c_str());
+
+	if (is.is_open())
+	{
+		string line;
+		while(getline(is,line))
+		{
+			auto cr=line.find('\r');
+			if (cr!=std::string::npos)
+			{
+				line.erase(cr,1);
+			}
+			cout<<line<<"\n";
+			if (!line.empty()){
+			stringstream ss(line);
+
+			vector<string> fields;
+			string field;
+			bool flag=0;
+			while (getline(ss,field,delimiter))
+			{
+				
+				trim(field);
+				if (!field.empty()){
+				fields.push_back(field);
+				flag=1;
+				}
+			}
+			if (flag==1){
+			data.push_back(fields);
+			}
+			}
+		}
+	}else{
+		throw string("cannot open csv file")+filename;
+	}
+};
+#include <fstream>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include "Item.h"
+
+using namespace std;
+
+Item::Item(){}
+Item::Item(string n,string i,string r,string s,string d):name(n),installer(i),remover(r),sequential(s),description(d){}
+
+string Item::getRemover()
+{
+	return remover;
+}
+string Item::getInstaller()
+{
+	return installer;
+}
+string Item::getName()
+{
+	return name;
+}
+void Item::print (ostream& os) const
+{
+	os<<"item name="<<name<<"  installer task="<<installer<<"  remover task="<<remover<<"  sequential code="<<sequential;
+	if (!description.empty()) os<<"   description="<< description;
+	os<<endl;
+}
+void Item::gengraphviz(ostream& os) const
+{
+	if (!installer.empty())
+		os<<"   "<<'"'<<name<<'"'<<"-->"<<'"'<<installer<<'"'<<" [color=green];\n";
+	if (!remover.empty())
+		os<<"   "<<'"'<<name<<'"'<<"-->"<<'"'<<remover<<'"'<<" [color=red];\n";
+}
+ItemManager::ItemManager(){}
+void ItemManager::print(ostream& os)
+{
+	for(auto t=begin();t<end();t++)
+	{
+		t->print(os);
+	}
+}
+
+Item* ItemManager::Find(string& name)
+{
+	for (size_t i=0u;i<Itemlist.size();i++)
+	{
+		if (name==Itemlist(i).getName())(
+		
+			return &Itemlist(i);
+			)
+	}
+	return nullptr;
+}
+
+void ItemManager::gengraphviz(string filename)
+{
+	ofstream of(filename.c_str());
+	if (of.is_open())
+	{
+		of<<"digraph Item {\n";
+		for (auto t=begin();t<end();t++)
+		{
+			t->gengraphviz(of);
+		}
+		of <<"}\n";
+		of.close();
+
+		string cmd="dot "+filename+" -Tpng > "+filename+".png";
+		cout<<"command '"<<cmd<<" ' returned "<<system(cmd.c_str())<<"\n";
+	}
+}
+int ItemManager::parseItem(vector<vector<string>>csvData)
+{
+	auto isName=[](string s)
+	{
+		if (!(isalpha (s[0]) || (s[0]=='_' ))) return false;
+		for (unsigned i=1;i<s.size(); i++)
+		{
+			if (!(isalnum (s[i]) ||( s[i]==' ') || (s[i]=='-') || (s[i]=='_'))) return false;
+		}
+		return true;
+	};
+	auto isInt=[](string s)
+	{
+		for (size_t i=0;i<s.size();i++)
+		{
+			if (!isdigit (s[i])) return false;
+		}
+		return true;
+	};
+	int errors=0;
+	int lineNumber=0;
+	auto printError=[&errors,&lineNumber](string message, string expected,string found)
+	{
+		errors++;
+		cerr<<"line "<<lineNumber<<" syntax error: "<<message<<" expected "<<expected<<" found -->"<<found<<" <--\n";
+	};
+	for(auto line:csvData)
+	{
+
+		lineNumber++;
+		string name,installer,remover,sequential,description;
+		switch (line.size()){
+		case 5:
+			if (line[4].size()>0 && isName(line[4]))
+			{
+				description=line[4];
+			}else {
+				printError("'failed' field name","alpha",line[4]);
+				continue;
+			}
+		case 4:
+			if (line[3].size()>0 && isInt(line[3]))
+			{
+				sequential=line[3];
+			}else {
+				printError("'failed' field name","alpha",line[3]);
+				continue;
+			}
+			if (line[2].size()>0 && isName(line[2])){
+				remover=line[2];
+			} else{
+				printError("'passed' field name","alpha",line[2]);
+				continue;
+			}
+			if (line[1].size()>0 && isName(line[1])){
+				installer=line[1];
+			}else{
+				printError("'slots' count","number",line[1]);
+				continue;
+			}
+			if (line[0].size()>0 &&isName(line[0])){
+				name=line[0];
+			}else{
+				printError("'name' field","alpha",line[0]);
+				continue;
+			}
+			break;
+			default :
+			printError ("?","syntax error! ?not 4, or 5 fields",to_string(line.size())+" fields");
+			continue;
+		}
+
+		emplace_back(name,installer,remover,sequential,description);
+	}
+	return errors;
+}
+#include "Machine.h"
+
+Machine::Machine(Task& tt,ItemManager& im):Task(tt),bInstaller(false),bRemover(false),bSink(false)
+{
+	
+	Classify(im);
+}
+
+void Machine::push(Job& j)
+{
+	inputQ.push(move(j));
+}
+void Machine::print(ostream& os)
+{
+	os<<"Machine name is "<< getName();
+	if (bInstaller) os <<"<--installer";
+	if (bRemover) os<<"<--remover";
+	if (bSink) os <<"<--SINK";
+	if (!bInstaller && !bRemover) os <<"<--neither installer nor remover";
+	os << "\n";
+}
+
+void Machine::Classify(ItemManager& im)
+{
+	for (auto it=im.begin(); it!=im.end(); it++)
+	{
+		if (getName()==it->getInstaller()) bInstaller=true;
+		if (getName()==it->getRemover()) bRemover=true;
+	}
+	if (bInstaller && bRemover)
+		throw getName()+"is both an installer and a remover. Fix item data and resubmit.";
+}
+
+void Machine::Run(ItemManager& im,vector<Machine>& machineList)
+{
+	cout <<"Machine::Run:: our name is  "<<name<<"\n";
+	
+	auto route=[&machineList, this](Job& job,string destination)
+	{
+		for (auto m=machineList.begin();m<machineList.end();m++)
+		{
+			if (m->getName()==destination)
+			{
+				m->push(move(job&));
+				cout <<"route moving job from '"<<this->getName()<<"' to '"<<destination<<"'\n";
+				break;
+			}
+		}
+	};
+	
+	if (inputQ.empty())
+		return;
+
+	job =move (inputQ.front());
+	inputQ.pop();
+
+	cout<<"Job=" ;
+	job.print(cout);
+
+	if (bSink)
+	{
+		if (job.isComplete())
+		{
+			cout <<"'"<<job.getProductName()<<"' completed for customer '"
+				<<job.getCustomerName()<<"'\n";
+		}else{
+			throw string("job at sink node ")+getName()+" but job is not complete";
+		}
+	}
+
+	bool didSomething=false;
+	if(bInstaller)
+	{
+		cout<<job.getItemsOrdered().size()<<" item ordered\n";
+
+		for (size_t item=0; item<job.getItemsOrdered().size();item++)
+		{
+			if (job.isInstalled(item))
+				continue;
+			string itemName=job.getItemsOrdered()[item];
+			Item* itemPtr=im.Find(itemName);
+			if (itemPtr && (itemPtr->getInstaller()==getName()))
+			{
+				job.Install(item);
+				didSomething = true;
+			}
+			else cout<<"item "<<itemName<<" needs installer "<<itemPtr->getInstaller()<<", (not us)\n";
+		}
+	}
+
+	if (bRemover)
+	{
+		cout <<job.getItemsOrdered().size()<<" item ordered.\n";
+
+		for (size_t item=0; item<job.getItemsOrdered().size(); item++)
+		{
+			if(!job.isInstalled(item)) 
+				continue;
+			string itemName=job.getItemsOrdered()[item];
+			Item* itemPtr=im.Find(itemName);
+			if (itemPtr && (itemPtr->getRemover()==getName()))
+			{
+				job.Remover(item);
+				didSomething=true;
+			}
+			else
+				cout <<"item "<<itemName<<" needs remover "<<itemPtr->getRemover()<<", (not us)\n";
+		}
+	}
+	string passed=getPassed();
+	if (!didSomething)
+	{
+		route(job,passed);
+		return;
+	}
+	string failed=getFailed();
+	if (failed.empty())
+	{
+		route(job,passed);
+		return;
+	}
+
+	if (rand()%2)
+	{
+		cout <<"Machine "<< getName()<<" COIN FLIP job  **Passed** \n";
+		route (job, passed);
+		return;
+	}else{
+		cout <<"Machine "<< getName()<<" COIN FLIP job  **Failed** \n";
+		route (job, failed);
+		return;
+	}
+}
+
+
+
+		
+
+#include <fstream>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <vector>
+
+#include "Order.h"
+
+
+using namespace std;
+
+Order::Order(){};
+Order::Order(string c,string p,vector<string> v):order(c),product(p),itemList(v){};
+
+string Order::getCustomerName()
+{
+	return order;
+}
+
+string Order::getProductName()
+{
+	return product;
+}
+
+vector<string> Order::getItemsOrdered()
+{
+	return itemList;
+}
+
+void Order::print (ostream& os) const
+{
+	os<<"Order name="<<order<<"  product name="<<product<<"  ItemList=";
+	for (size_t i=0;i<itemList.size();i++)
+	{
+		os<<itemList[i]<<"  ";
+	}
+	os<<endl;
+}
+
+void Order::gengraphviz(ostream& os) const
+{
+	os<<"Order name="<<order<<"  product name="<<product<<"  ItemList=";
+	for (size_t i=0;i<itemList.size();i++)
+	{
+		os<<itemList[i]<<"  ";
+	}
+	os<<endl;
+}
+OrderManager::OrderManager(){}
+void OrderManager::print(ostream& os)
+{
+	for(auto t=begin();t<end();t++)
+	{
+		t->print(os);
+	}
+}
+void OrderManager::gengraphviz(string filename)
+{
+	ofstream of(filename.c_str());
+	if (of.is_open())
+	{
+		of<<"digraph Order {\n";
+		for (auto t=begin();t<end();t++)
+		{
+			t->gengraphviz(of);
+		}
+		of <<"}\n";
+		of.close();
+
+		string cmd="dot "+filename+" -Tpng > "+filename+".png";
+		cout<<"command '"<<cmd<<" ' returned "<<system(cmd.c_str())<<"\n";
+	}
+}
+int OrderManager::parseOrder(vector<vector<string>>csvData)
+{
+	auto isName=[](string s)
+	{
+		if (!(isalpha (s[0]) || (s[0]=='_' ))) return false;
+		for (unsigned i=1;i<s.size(); i++)
+		{
+			if (!(isalnum (s[i]) ||( s[i]==' ') || (s[i]=='-') || (s[i]=='_'))) return false;
+		}
+		return true;
+	};
+	auto isInt=[](string s)
+	{
+		for (size_t i=0;i<s.size();i++)
+		{
+			if (!isdigit (s[i])) return false;
+		}
+		return true;
+	};
+	int errors=0;
+	int lineNumber=0;
+	auto printError=[&errors,&lineNumber](string message, string expected,string found)
+	{
+		errors++;
+		cerr<<"line "<<lineNumber<<" syntax error: "<<message<<" expected "<<expected<<" found -->"<<found<<" <--\n";
+	};
+	for(auto line:csvData)
+	{
+		lineNumber++;
+		cout <<"this is line: "<<lineNumber<<"\n";
+		string Order,product;
+		vector <string> itemList;
+		if (line.size()>=3)
+		{
+			if (line[0].size()>0 &&isName(line[0])){
+				Order=line[0];
+			}else{
+				printError("'Order name' field","alpha",line[0]);
+				continue;
+			}
+			if (line[1].size()>0 && isName(line[1])){
+				product=line[1];
+			}else{
+				printError("'product name' field ","alpha",line[1]);
+				continue;
+			}
+
+			for (size_t i=2;i<line.size();i++)
+			{
+				if (line[i].size()>0 && isName(line[i]))
+				{
+					itemList.push_back(line[i]); 
+				}else{
+					printError("'Item name' field ","alpha",line[i]);
+				}
+			}
+
+		}else{
+			printError ("?","syntax error ?need at least 3 fields",to_string(line.size())+" fields");
+			continue;
+		}
+		
+
+		emplace_back(Order,product, itemList);
+	}
+	return errors;
+}
+//task.cpp
+#include <string>
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include "Task.h"
+//#include "util.h"
+
+using namespace std;
+
+Task::Task():bSink(false),inboundCount(0){}
+
+Task::Task(string n,string s,string p,string f):name(n),slots(s),passed(p),failed(f),inboundCount(0){}
+//fluff, setters and getters
+string& Task::getName()
+{
+	return name;
+}
+string& Task::getPassed()
+{
+	return passed;
+}
+string& Task::getFailed()
+{
+	return failed;
+}
+bool Task::isSink() const
+{
+	return passed.empty() && failed.empty();
+}
+void Task::incInboundCount()
+{
+	inboundCount++;
+}
+int Task::getInboundCount() 
+{
+	return inboundCount;
+}
+bool Task::isSource() const
+{
+	return inboundCount==0;
+}
+
+
+
+void Task::print (ostream& os) const
+{
+	os<<"name="<<name<<"  slots="<<slots;
+	if (!passed.empty()) os<<"   passed="<< passed;
+	if (!failed.empty()) os <<"  failed="<<failed;
+	if (isSource() && isSink())
+	{
+		os << " SINGLETON";
+	}else {
+		if (isSink()) os<<" SINK";
+		if (isSource()) os <<" SOURCE";
+	}
+	os<<endl;
+}
+void Task::gengraphviz(ostream& os) const
+{
+	auto makeName=[](string n)
+	{
+		return string("\"TASK\\n)+n+(\"\n");
+	};
+	if (isSource() && isSink())
+	{
+		os <<"  "<<makeName(name)<<" [fillcolor=yellow,shape=box3d];\n";
+	}
+	if (!passed.empty())
+	{
+		os<<"   "<<'"'<<name<<'"'<<"-->"<<'"'<<passed<<'"'<<" [color=green];\n";
+	}
+	if (!failed.empty())
+	{
+		os<<"   "<<'"'<<name<<'"'<<"-->"<<'"'<<failed<<'"'<<" [color=red];\n";
+	}
+	if (passed.empty() && failed.empty())
+	{
+		os<<"   "<<'"'<<name<<'"'<<" [shape=box];\n";
+	}
+};
+
+Task* TaskManager::Find(string& name)
+{
+	for (size_t i=0u;i<taskList.size();i++)
+		if (name==taskList[i].getName())
+			return &taskList[i];
+	return nullptr;
+}
+TaskManager::TaskManager(){}
+
+void TaskManager::print(ostream& os)
+{
+	for(auto t:taskList)
+	{
+		t.print(os);
+	}
+
+	int sourceCount=0;
+	int sinkCount=0;
+	int singletonCount=0;
+	for (auto it=taskList.begin(); it<taskList.end();it++)
+	{
+		if (it->isSink() && it->isSource())
+		{
+			singletonCount++;
+			os << it->getName() <<" is a SINGLETON -isolated node\n";
+		}else{
+			if (it->isSink()){
+				sinkCount++;
+				os << it->getName()<<" is a SINK\n";
+			}
+			if (it->isSource())
+			{
+				sourceCount++;
+				os << it->getName()<<" is a SOURCE\n";
+//				os <<it->getName()<<" is a SINK1\n";
+			}
+		}
+	}
+	cout <<" There are "<<sourceCount<< " source nodes ";
+}
+void TaskManager::gengraphviz(string filename)
+{
+	ofstream of(filename.c_str());
+	if (of.is_open())
+	{
+		of<<"digraph task {\n";
+		for (auto t:taskList)
+		{
+			t.gengraphviz(of);
+		}
+		of <<"label=\"\n" "\n"
+			<<"Task Relation Diagram\n" "\n"
+			<<"Generated from  "<< filename <<"\n"
+			<<  "Graph coding by Greg.Drawn by Graphviz.\"\n" "fonsize=30;\n";
+
+		of <<"}\n";
+		of.close();
+
+		string cmd="dot "+filename+" -Tpng > "+filename+".png";
+		cout<<"command '"<<cmd<<" ' returned "<<system(cmd.c_str())<<"\n";
+	}
+}
+int TaskManager::parseTask(vector<vector<string>>csvData)
+{
+	auto isName=[](string s)
+	{
+		if (!(isalpha (s[0]) || (s[0]=='_' ))) return false;
+		for (unsigned i=1;i<s.size(); i++)
+		{
+			if (!(isalnum (s[i]) ||( s[i]==' ') || (s[i]=='-') || (s[i]=='_'))) return false;
+		}
+		return true;
+	};
+	auto isInt=[](string s)
+	{
+		for (size_t i=0;i<s.size();i++)
+		{
+			if (!isdigit (s[i])) return false;
+		}
+		return true;
+	};
+	int errors=0;
+	int lineNumber=0;
+	auto printError=[&errors,&lineNumber](string message, string expected,string found)
+	{
+		errors++;
+		cerr<<"line "<<lineNumber<<" syntax error: "<<message<<" expected "<<expected<<" found -->"<<found<<" <--\n";
+	};
+	for(auto line:csvData)
+	{
+		lineNumber++;
+		string name,slots("1"),passed,failed;
+		switch (line.size()){
+		case 4://name,slots,passed,failed
+			if (line[3].size()>0 && isName(line[3]))
+			{
+				failed=line[3];
+			}else {
+				printError("'failed' field name","alpha",line[3]);
+				continue;
+			}
+		case 3://name,slots,passed
+			if (line[2].size()>0 && isName(line[2])){
+				passed=line[2];
+			} else{
+				printError("'passed' field name","alpha",line[2]);
+				continue;
+			}
+		case 2://name,slots
+			if (line[1].size()>0 && isInt(line[1])){
+				slots=line[1];
+			}else{
+				printError("'slots' count","number",line[1]);
+				continue;
+			}
+		case 1://name
+			if (line[0].size()>0 &&isName(line[0])){
+				name=line[0];
+			}else{
+				printError("'name' field","alpha",line[0]);
+				continue;
+			}
+			break;
+			default :
+			printError ("?","1,2,3,or 4 fields",to_string(line.size())+" fields");
+			continue;
+		}
+		//it pased! Store the fields.
+		//taskList.push_back(move(Task(name,slots,passed,failed)));
+		taskList.emplace_back(name,slots,passed,failed);
+	}
+	return errors;
+}
+
+int TaskManager::IntegrityCheck_tm()
+{
+	int errorCount=0;
+
+	for (auto it1=taskList.begin();it1<taskList.end();it1++)
+	{
+		for (auto it2=it1+1;it2<taskList.end();it2++)
+		{
+			if (strncasecmp(it1->getName().c_str(),it2->getName().c_str())==0)
+			{
+				errorCount++;
+				cout <<"Duplicate Task 1: '";
+				it1->print(cout);
+				cout <<"Duplicate Task 2: '";
+				it2->print(cout);
+			}
+		}
+	}
+
+	for (auto it=taskList.begin(); it<taskList.end();it++)
+	{
+		Task* pTask;
+		if (!it->getPassed().empty())
+		{
+			pTask=Find(it->getPassed());
+			if (pTask)
+			{
+				pTask->incInboundCount();
+			}else{
+				errorCount++;
+				cout <<"'passed' task not found: ";
+				it->print(cout);
+			}
+		}
+		if (!it->getPassed().empty())
+		{
+			pTask=Find(it->getFailed());
+			if (pTask)
+			{
+				pTask->incInboundCount();
+			}else{
+				errorCount++;
+				cout <<"'passed' task not found: ";
+				it->print(cout);
+			}
+		}
+	}
+	return errorCount;
+}
+#include "job.h"
+
+
+
+Job::Job(Order& oo):Order(oo)
+{
+	for (size_t i=0;i<getItemsOrdered().size();i++)
+		installed.push_back(false);
+}
+
+bool Job::isComplete()
+{
+	for (auto e : installed)
+		if (! e) return false;
+	return true;
+}
+	
+	
+#include <string>
+#include<iostream>
+#include <vector>
+#include <exception>
+
+#include "Job.h"
+#include "Machine.h"
+#include "Item.h"
+#include "Task.h"
+#include "Order.h"
+#include "util.h"
+
+using namespace std;
+
+class Factory
+{
+	ItemManager im;
+	OrderManager om;
+	TaskManager tm;
+	vector <Job> jobList;
+	vector <Machine> machineList;
+public:
+	Factory(
+		ItemManager  && IM,
+		OrderManager && OM,
+		TaskManager  && TM
+		)
+		:im(move(IM)),om(move(OM)),tm(move(TM))
+	{   
+	
+        ///////////////////////////////////////////////
+	    // step 1:load machines, one machine per task//
+		///////////////////////////////////////////////
+		for (size_t m=0;m<tm.size();m++)
+		{
+			machineList.push_back(Machine (tm.at(m),im));
+		}
+		
+		
+        ///////////////////////////////////
+		//stpe 2:fine source machine//////
+		/////////////////////////////////
+
+		enum{SOURCE_NOT_FOUND=-1};
+		int sourceMachine=SOURCE_NOT_FOUND;
+		for (size_t m=0;m<machineList.size();m++)
+		{
+			if ( machineList.at(m).isSource() && !machineList.at(m).isSink())
+			{
+				cout <<machineList.at(m).getName()<<" is a source\n";
+				if (sourceMachine == SOURCE_NOT_FOUND)
+				{
+					sourceMachine=m;
+				}else{
+					throw string("cannot build factory: multiple source node, fix data and resubmit");
+				}
+			}
+		}
+		if (sourceMachine==SOURCE_NOT_FOUND)
+			throw string ("cannot build factory: NO sourse node, fix data and resubmit");
+		cout <<"Source machine = "<<sourceMachine<< ": ";
+		tm.at(sourceMachine).print(cout);
+		cout <<"\n";
+		
+		
+        //////////////////////////////////////////////////////////// 
+		//step 3:load jobs into source machine, one job per order///
+        ///////////////////////////////////////////////////////////
+        
+        
+		for (size_t j=0;j<om.size();j++)
+		{
+			machineList.at(sourceMachine).push(move(Job(om.at(j))) );
+		}
+
+
+         ///////////////////
+		//step 4:Time loop//
+		///////////////////
+		
+		for (int time=0;;time++)
+		{
+			cout <<"\n\nTIME LOOP TOP,time="<<time<<"\n";
+			
+			bool Finished=true;
+			for (size_t m=0;m<machineList.size();m++)
+			{
+				if (! machineList[m].empty())
+				{Finished=false;
+				cout<<"Machine scan: "<<machineList[m].getName()<<" has jobs.\n";
+				}
+			}
+			if (Finished)
+			{
+				cout <<"*** No jobs waiting for processing, all done!   ***\n";
+				break;  
+			}
+			
+			///////////////////////
+			//step 5:Machine loop//
+			///////////////////////
+
+			for (size_t m=0;m<machineList.size();m++)
+			{
+				machineList[m].Run(im,machineList);
+			}
+
+		}
+	}
+};
+
+int IntegrityCheck(
+	ItemManager  & im,
+	OrderManager & om,
+	TaskManager  & tm
+	)
+{
+	int errorCount=0;
+	
+
+	for (auto item=im.begin();item<im.end();item++)
+	{
+		if (tm.Find(item->getInstaller())==nullptr )
+		{
+			errorCount++;
+			cerr<<"Item <"<<item->getName()<<"> need installer <"<<item->getInstaller() 
+			<<">"<<" but there ia no task <"<< item->getInstaller() <<">"
+			<<"\n";
+		}
+		if (tm.Find(item->getRemover())==nullptr)
+		{ 
+			errorCount++;
+			cerr <<"Item <"<<item->getName()<<"> need remover <"<<item->getRemover()<<">\n";
+		}
+	}
+
+	for (auto order=om.begin();order<om.end();order++)
+	{
+		vector<string> temp;
+		temp=order->getItemsOrdered();
+
+		for (auto item =temp.begin();item<temp.end();item++)
+		{
+			if (im.Find(*item)==nullptr)
+			{
+				errorCount++;
+				cerr <<"Customer <"<<order->getCustomerName()<<"> tried to order <"<<*item<<"> but there is not item <"<<*item<<">\n";
+			}
+		}
+	}
+	return errorCount;
+};
+
+
+int main (int argc,char** argv)
+{
+
+	char delimiter=',';
+	string fileItem;
+	string fileOrder;
+	string fileTask;
+
+	if ( argc!=5)
+	{
+		cerr<<"usage: "<<argv[0]<<" itemfile orderfile taskfile csv-char\n";
+		return 1;
+	}
+	fileItem=argv[1];
+	fileOrder=argv[2];
+	fileTask=argv[3];
+	delimiter=argv[4][0];
+
+	try{
+		int errors=0;
+
+		auto fileExists=[](string f) {ifstream is(f); return is.is_open();};
+		if (! fileExists(fileItem))
+		{
+			errors++;
+			cerr<<"cannot open item file <"<<fileItem<<">\n";
+		}
+		if (! fileExists(fileOrder))
+		{
+			errors++;
+			cerr<<"cannot open customOrder file <"<<fileOrder<<">\n";
+		}
+		if (! fileExists(fileTask))
+		{
+			errors++;
+			cerr<<"cannot open task file <"<<fileTask<<">\n";
+		}
+		if (errors) return 2;
+
+		auto printCSV=[](vector<vector<string>>& csv)
+		{
+			int lineCount=1;
+			for (auto line:csv)
+			{
+				cout <<"#"<<lineCount<<": fields="<<line.size()<<"-->";
+				for (auto field:line)
+				{
+					cout<<" <"<<field<<">";
+				}
+				cout <<"\n";
+				lineCount++;
+			}
+		};
+
+		cout <<"+++++++++++++++++++++++++++++++++++++++++++++++\n";
+		cout <<"+                Item                         +\n";
+		cout <<"+++++++++++++++++++++++++++++++++++++++++++++++\n";
+		cout  <<"# file: "<<fileItem <<" delimiter -->"<< delimiter<<"<--\n";
+		vector<vector<string> > csvItem;
+		csvRead(fileItem,delimiter,csvItem);
+		printCSV(csvItem);
+
+		ItemManager im;
+		errors=im.parseItem(csvItem);
+		if(errors)
+			cout <<"'"<<fileItem<<"' contains "<<errors<<" syntax errors\n";
+		im.print(cout);
+		im.gengraphviz(fileItem+".gv");
+
+
+		cout <<"+++++++++++++++++++++++++++++++++++++++++++++++\n";
+		cout <<"+                Order                        +\n";
+		cout <<"+++++++++++++++++++++++++++++++++++++++++++++++\n";
+		cout  <<"# file: "<<fileOrder <<" delimiter -->"<< delimiter<<"<--\n";
+		vector<vector<string> > csvOrder;
+		csvRead(fileOrder,delimiter,csvOrder);
+		printCSV(csvOrder);
+
+		OrderManager om;
+		errors=om.parseOrder(csvOrder);
+		if(errors)
+			cout <<"'"<<fileOrder<<"' contains "<<errors<<" syntax errors\n";
+		om.print(cout);
+		om.gengraphviz(fileOrder+".gv");
+
+
+		cout <<"+++++++++++++++++++++++++++++++++++++++++++++++\n";
+		cout <<"+                Task                         +\n";
+		cout <<"+++++++++++++++++++++++++++++++++++++++++++++++\n";
+		cout  <<"# file: "<<fileTask <<" delimiter -->"<< delimiter<<"<--\n";
+		vector<vector<string>> csvTask;
+		csvRead(fileTask,delimiter,csvTask);
+		printCSV(csvTask);
+
+		TaskManager tm;
+		errors=tm.parseTask(csvTask);
+		if(errors)
+			cout <<"Bad data :'"<<fileTask<<"' contains "<<errors<<" syntax errors\n";
+		int errorCount=tm.IntegrityCheck_tm();
+		if (errorCount)
+			cout <<"Bad data: "<<errorCount<<" errors either duplicates or unresolved task references\n";
+		tm.print(cout);
+		tm.gengraphviz(fileTask+".gv");
+
+		cout<<"+++++++++++++++++++++++++++++++++++++++++++++++++\n";
+		cout<<"+     Item, Order, Task Integrity Check         +\n";
+		cout<<"+++++++++++++++++++++++++++++++++++++++++++++++++\n";
+		errors=IntegrityCheck (im,om,tm);
+		if (errors)
+		{
+			cerr<<"\n";
+                        cerr<<"+++++++++++++++++++++++++++++++++++++++++++++\n";
+			cerr<<"+++ Integrity errors --- can not continue +++\n";
+			cerr<<"+++        Fix the data  and resubmit     +++\n";
+                        cerr<<"+++++++++++++++++++++++++++++++++++++++++++++\n";
+			return 3;
+		}
+
+		cout <<"***    Integrity Check passed    ***\n";
+		Factory f(move(im),move(om),move(tm));
+		cout<<"***      Good To Go     ***\n";
+	} catch (exception& e)
+	{
+		cerr <<"It throw a std exception: "<<e.what()<<"\n";
+	} catch (string& e)
+	{
+		cerr<<"It threw: "<<e<<"\n";
+	}
+	return 0;
+}
+
+
+
+
+
+yren27@matrix:~/oop345/ms3> g++ -std=c++0x -o ms3 milestones3.cpp
+milestones3.cpp: In function â€˜int IntegrityCheck(ItemManager&, OrderManager&, TaskManager&)â€?
+milestones3.cpp:123:35: error: no matching function for call to â€˜TaskManager::Find(std::string)â€?
+milestones3.cpp:123:35: note: candidate is:
+Task.h:36:8: note: Task* TaskManager::Find(std::string&)
+Task.h:36:8: note:   no known conversion for argument 1 from â€˜std::string {aka std::basic_string<char>}â€?to â€˜std::string& {aka std::basic_string<char>&}â€?
+milestones3.cpp:130:33: error: no matching function for call to â€˜TaskManager::Find(std::string)â€?
+milestones3.cpp:130:33: note: candidate is:
+Task.h:36:8: note: Task* TaskManager::Find(std::string&)
+Task.h:36:8: note:   no known conversion for argument 1 from â€˜std::string {aka std::basic_string<char>}â€?to â€˜std::string& {aka std::basic_string<char>&}â€?
+yren27@matrix:~/oop345/ms3> exit
+exit
+
+Script done on Mon 25 Apr 2016 12:15:26 AM EDT

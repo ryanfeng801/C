@@ -1,0 +1,152 @@
+Script started on Mon 25 Jan 2016 10:19:11 PM EST
+yren27@matrix:~/oop345/w1> whoami
+yren27
+yren27@matrix:~/oop345/w1> cat *.h *.cpp
+#ifndef __CString_H__
+#define __CString_H__
+#include <iostream>
+extern const int MAX;
+
+namespace w1{
+
+class CString{
+
+	char *str;
+
+public:
+
+	CString(char*);
+
+	void display(std::ostream&);
+
+
+
+};
+
+	std::ostream& operator<<(std::ostream&, CString&);
+
+}
+
+#endif
+#ifndef __PROCESS_H__
+#define __PROCESS_H__
+
+void process(char*);
+
+#endif
+#include <iostream>
+#include <cstring>
+#include "CString.h"
+
+const int MAX = 3;
+
+namespace w1{
+
+CString::CString(char* s){
+
+	str = new char[MAX];
+
+	if(s == NULL){
+
+		str[0] = '\0';
+
+	}
+	else{
+		
+		strncpy(str, s, MAX);
+	}
+
+}
+
+
+
+void CString::display(std::ostream& os){
+
+	os << str;
+
+}
+
+
+std::ostream& operator<<(std::ostream& os, CString& cs){
+
+	static int count = 0;
+
+	os << count << ": ";
+
+	cs.display(os);
+
+	count++;
+
+	return os;
+
+}
+}
+#include <iostream>
+#include "process.h"
+#include "CString.h"
+
+void process(char* s){
+
+	w1::CString CS(s);
+	std::cout << CS  << std::endl;
+
+}
+#include <iostream>
+#include "CString.h"
+#include "process.h"
+
+
+int main(int argc, char* argv[]){
+
+	if(argc > 1){
+
+		std::cout << "Command Line : ";
+
+		for(int a=0; a < argc; a++){
+
+			std::cout << argv[a] << ' ';
+
+		//	process(argv[a]);
+
+		}
+
+		std::cout << std::endl;
+
+		std::cout << "Maximum number of characters stored: " << MAX << std::endl;
+
+		for(int b=1; b < argc; b++){
+
+			process(argv[b]);
+
+		}	
+
+		return 0;
+
+	}
+	
+	else{
+
+		std::cout << "Command Line : " << argv[0] << ' ' << std::endl;
+
+		std::cout << "Insufficient number of arguments (min 1)" << std::endl;
+
+		return 1;
+
+	}
+
+
+
+}
+yren27@matrix:~/oop345/w1> g++ -o w1 w1.cpp CString.cpp process.cpp
+yren27@matrix:~/oop345/w1> w1 oop345 btp305
+Command Line : w1 oop345 btp305 
+Maximum number of characters stored: 3
+0: oop
+1: btp
+yren27@matrix:~/oop345/w1> w1
+Command Line : w1 
+Insufficient number of arguments (min 1)
+yren27@matrix:~/oop345/w1> exit
+exit
+
+Script done on Mon 25 Jan 2016 10:20:27 PM EST
